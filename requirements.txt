@@ -1,0 +1,8 @@
+fastapi
+sqlalchemy
+uvicorn
+typing
+pydantic
+alembic
+fastapi.middleware
+os
