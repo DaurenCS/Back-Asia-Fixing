@@ -5,3 +5,4 @@ typing
 pydantic
 alembic
 fastapi.middleware
+psycopg2-binary
