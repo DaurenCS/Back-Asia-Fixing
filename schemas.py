@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 
 class Base(BaseModel):
     name: str
@@ -22,13 +22,15 @@ class CreateProduct(Base):
 class CreateProduct(Base):
     id: int
 
-class Category(Base):
-    id:int
-    type_id: int
-
 class Type(Base):
     id: int
     pass
+
+class Category(Base):
+    id:int
+    type: Type
+
+
 
 class ProductImage(BaseModel):
     name: str
@@ -39,3 +41,9 @@ class ProductImage(BaseModel):
         from_attributes = True
 
 
+class ProductDetails(Base):
+    id: int
+    vendor_code: str   
+    price: float
+    category: Category
+    images: List[ProductImage]

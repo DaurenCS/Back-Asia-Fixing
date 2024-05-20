@@ -5,8 +5,9 @@ import database as db
 import models as mdl
 from fastapi import HTTPException
 from sqlalchemy.future import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from database import session
+from typing import List
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
@@ -49,10 +50,19 @@ def add_product(product: sch.Product, session: Session = Depends(get_db)) -> str
         session.add(images)
     return f"Products was added;"
 
-@app.get("/products")
-def get_product( session: Session = Depends(get_db)):
-    db_products = session.query(mdl.Product).all()
-    return [sch.Product.model_validate(product) for product in db_products]
+@app.get("/products", response_model=List[sch.ProductDetails])
+def get_products(session: Session = Depends(get_db)):
+    # Query to get list of products with details including category name, type name, and product images
+    products = (
+        session.query(mdl.Product)
+        .options(
+            selectinload(mdl.Product.category).selectinload(mdl.Category.type),
+            selectinload(mdl.Product.images)
+        )
+        .all()
+    )
+    
+    return products
 
 
 @app.post("/categories/add")
@@ -115,3 +125,22 @@ def get_products_by_type_id(type_id: int, session: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="No products found for the given type ID")
     
     return products
+
+
+@app.get("/products/{product_id}", response_model=sch.ProductDetails)
+def get_product_details(product_id: int, session: Session = Depends(get_db)):
+    # Query to get product details with category name, type name, and product images
+    product = (
+        session.query(mdl.Product)
+        .options(
+            selectinload(mdl.Product.category).selectinload(mdl.Category.type),
+            selectinload(mdl.Product.images)
+        )
+        .filter(mdl.Product.id == product_id)
+        .first()
+    )
+    
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    
+    return product
