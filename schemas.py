@@ -23,7 +23,7 @@ class CreateProduct(Base):
     id: int
 
 class Category(Base):
-    # id:int
+    id:int
     type_id: int
 
 class Type(Base):
