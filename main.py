@@ -4,6 +4,7 @@ import schemas as sch
 import database as db
 import models as mdl
 from fastapi import HTTPException
+from sqlalchemy.future import select
 from sqlalchemy.orm import Session
 from database import session
 from fastapi.middleware.cors import CORSMiddleware
@@ -101,4 +102,16 @@ def get_categories_by_type_id(type_id: int, session: Session = Depends(get_db)):
     
 
 
-
+@app.get("/products/type/{type_id}")
+def get_products_by_type_id(type_id: int, session: Session = Depends(get_db)):
+    db_query = (
+        select(mdl.Product)
+        .join(mdl.Category)
+        .join(mdl.Type)
+        .where(mdl.Type.id == type_id)
+    )
+    products = session.execute(db_query).scalars().all()
+    if not products:
+        raise HTTPException(status_code=404, detail="No products found for the given type ID")
+    
+    return products
