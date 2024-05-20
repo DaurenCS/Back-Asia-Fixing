@@ -24,6 +24,7 @@ class CreateProduct(Base):
 
 class Type(Base):
     id: int
+    
     pass
 
 class Category(Base):
@@ -46,4 +47,4 @@ class ProductDetails(Base):
     vendor_code: str   
     price: float
     category: Category
-    images: List[ProductImage]
+    images: ProductImage
