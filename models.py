@@ -21,7 +21,7 @@ class Product(Base):
     category_id: Mapped[int] = mapped_column(sqlalchemy.ForeignKey('categories.id'))
     category: Mapped['Category'] =  relationship(back_populates='product')
 
-    images: Mapped['ProductImage'] = relationship(back_populates='product')
+    images: Mapped['ProductImage'] = relationship(back_populates='product',uselist=True)
 
 class ProductImage(Base):
     __tablename__ = "images"
