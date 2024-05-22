@@ -49,6 +49,7 @@ class Category(Base):
 
 
 
+
     
 
 class Type(Base):
@@ -57,8 +58,17 @@ class Type(Base):
     name: Mapped[str]
     description: Mapped[str]
 
-    category: Mapped['Category'] =  relationship(back_populates='type')
+    category: Mapped['Category'] =  relationship(back_populates='type', uselist=True)
 
+
+class Technology(Base):
+    __tablename__ = "technologies"
+    id: Mapped[_id]
+    name: Mapped[str]
+    description: Mapped[str]
+    image: Mapped[str]
+    text: Mapped[str]
+    local: Mapped[str] 
 
 
 

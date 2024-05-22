@@ -1,14 +1,15 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, status
 from sqlalchemy import select, insert
 import schemas as sch
 import database as db
 import models as mdl
 from fastapi import HTTPException
 from sqlalchemy.future import select
-from sqlalchemy.orm import Session, selectinload
-from database import session
+from sqlalchemy.orm import Session, selectinload, joinedload
+from database import sessionLocal
 from typing import List
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.exc import SQLAlchemyError, NoResultFound
 
 app = FastAPI()
 
@@ -20,14 +21,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-def get_db():
+async def get_db():
+    session = sessionLocal()
     try:
         yield session
         session.commit()
-    except:
+    except Exception as e:
+        session.rollback()
+        raise
         raise
     finally:
-        session.close()
+         session.close()
 
 def url_creater(product: sch.Product):
     replaced_string = product.name.replace(".", "_").replace(" ", "-")
@@ -48,6 +52,12 @@ def add_product(product: sch.Product, session: Session = Depends(get_db)) -> str
     for url in url_creater(product):
         images = mdl.ProductImage(product_id = product.id, name = url)
         session.add(images)
+    return f"Products was added;"
+
+@app.post("/technologies/add")
+def add_technologies(product: sch.Technology, session: Session = Depends(get_db)) -> str:
+    db_product  = mdl.Technology(**product.model_dump())
+    session.add(db_product) 
     return f"Products was added;"
 
 @app.get("/products")
@@ -74,7 +84,7 @@ def add_type(type: sch.Type, session: Session = Depends(get_db)) -> str:
 
 @app.get("/types")
 def get_type( session: Session = Depends(get_db)):
-    db_products = session.query(mdl.Type).all()
+    db_products = session.query(mdl.Type).filter(mdl.Type.name != "Hidroisolation").all()
     return [sch.Type.model_validate(product) for product in db_products]
 
 @app.get("/product/{product_id}/images")
@@ -86,22 +96,78 @@ def get_images(product_id: int, session: Session = Depends(get_db)):
     
 @app.get("/products/isolation/categories")
 def get_hidro_isolation(session: Session = Depends(get_db)):
-    types = session.query(mdl.Type).filter(mdl.Type.name == "HidroIsolation").first()
-    categories = session.query(mdl.Category).filter(mdl.Category.type_id == types.id).all()
-    return [sch.Category.model_validate(items) for items in categories]
+    try:
+        types = session.query(mdl.Type).filter(mdl.Type.name == "Hidroisolation").first()
+        
+        if not types:
+            raise HTTPException(status_code=404, detail="Type 'HidroIsolation' not found")
+
+        categories = session.query(mdl.Category).filter(mdl.Category.type_id == types.id).all()
+
+        if not categories:
+            raise HTTPException(status_code=404, detail="No categories found for type 'HidroIsolation'")
+
+        return [sch.Category.model_validate(items) for items in categories]
+    
+    except HTTPException as http_exc:
+        raise http_exc
+
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error"
+        )
 
 
-@app.get("/products/{category_id}")
+@app.get("/products/category/{category_id}")
 def get_products_by_category(category_id: int, session: Session = Depends(get_db)):
     products = session.query(mdl.Product).filter(mdl.Product.category_id == category_id).all()
-    return [sch.Product.model_validate(items) for items in products]
+    return [sch.ProductDetails.model_validate(items) for items in products]
 
 @app.get("/categories/{type_id}")
 def get_categories_by_type_id(type_id: int, session: Session = Depends(get_db)):
-    categories = session.query(mdl.Category).filter(mdl.Category.type_id == type_id).all()
-    return [sch.Category.model_validate(items) for items in categories]
-    
+    try:
+        categories = session.query(mdl.Category).filter(mdl.Category.type_id == type_id).all()
+        if not categories:
+            return {"not found"}
+        return [sch.Category.model_validate(items) for items in categories]
+    except SQLAlchemyError as e:
+        print(f"Database error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error"
+        )
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error"
+        )
 
+
+@app.get("/types-with-categories")
+def get_types_with_categories(session: Session = Depends(get_db)):
+    try:
+        types = session.query(mdl.Type).filter(mdl.Type.name != "Hidroisolation").all()
+        
+        if not types:
+            raise HTTPException(status_code=404, detail="No types found")
+
+        return [
+            {
+                "id": type.id,
+                "name": type.name,
+                "description": type.description,
+                "categories": get_categories_by_type_id(type.id, session)
+            } for type in types
+        ]
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error"
+        )
 
 @app.get("/products/type/{type_id}")
 def get_products_by_type_id(type_id: int, session: Session = Depends(get_db)):
