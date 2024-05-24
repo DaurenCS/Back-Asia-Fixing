@@ -13,13 +13,15 @@ COPY requirements.txt .
 # Install the dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
+COPY . .
+
 # Command to run Alembic to create a new migration
 RUN alembic revision -m "migrate" --autogenerate
 
 RUN alembic upgrade head
 
 # Copy the rest of the application code to the working directory
-COPY . .
+
 
 
 # Command to run the FastAPI application with uvicorn
