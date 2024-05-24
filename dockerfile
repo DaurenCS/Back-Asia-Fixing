@@ -1,40 +1,20 @@
-# Используйте официальный образ Python в качестве базового образа
+# Use an official image of Python as the base image
 FROM python:3.9-slim
 
-# Установите переменную среды PYTHONUNBUFFERED для предотвращения буферизации вывода
+# Set an environment variable to prevent Python from buffering stdout and stderr
 ENV PYTHONUNBUFFERED=1
 
-# Установите рабочую директорию внутри контейнера
+# Set the working directory inside the container
 WORKDIR /app
 
-# Скопируйте файл зависимостей и установите их с помощью pip
+# Copy the dependencies file to the working directory
 COPY requirements.txt .
 
+# Install the dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Скопируйте файлы вашего FastAPI-проекта внутрь контейнера
+# Copy the rest of the application code to the working directory
 COPY . .
 
-# Команда для запуска вашего FastAPI-приложения с помощью uvicorn
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
-
-# Используйте официальный образ Python в качестве базового образа
-
-FROM python:3.9-slim
-
-# Установите переменную среды PYTHONUNBUFFERED для предотвращения буферизации вывода
-ENV PYTHONUNBUFFERED=1
-
-# Установите рабочую директорию внутри контейнера
-WORKDIR /app
-
-# Скопируйте файл зависимостей и установите их с помощью pip
-COPY requirements.txt .
-
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Скопируйте файлы вашего FastAPI-проекта внутрь контейнера
-COPY . .
-
-# Команда для запуска вашего FastAPI-приложения с помощью uvicorn
+# Command to run the FastAPI application with uvicorn
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
