@@ -23,8 +23,7 @@ class CreateProduct(Base):
     id: int
 
 class Type(Base):
-    id: int
-
+    pass
 
 class Category(Base):
     id:int
