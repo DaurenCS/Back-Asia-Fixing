@@ -4,6 +4,7 @@ from typing import Optional, List
 class Base(BaseModel):
     name: str
     description: str
+    local : str
     class Config:
         from_attributes = True
 

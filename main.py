@@ -3,13 +3,16 @@ from sqlalchemy import select, insert
 import schemas as sch
 import database as db
 import models as mdl
-from fastapi import HTTPException
+from fastapi import HTTPException, UploadFile, File
 from sqlalchemy.future import select
 from sqlalchemy.orm import Session, selectinload, joinedload
 from database import sessionLocal
 from typing import List
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.exc import SQLAlchemyError, NoResultFound
+from fastapi.responses import FileResponse
+import shutil
+import os
 
 app = FastAPI()
 
@@ -58,11 +61,17 @@ def add_product(product: sch.Product, session: Session = Depends(get_db)) -> str
 def add_technologies(product: sch.Technology, session: Session = Depends(get_db)) -> str:
     db_product  = mdl.Technology(**product.model_dump())
     session.add(db_product) 
-    return f"Products was added;"
+    return f"Technology was added;"
+
+@app.get("/technologies")
+def get_technologies(local: str, session: Session = Depends(get_db)):
+    db_tech = session.query(mdl.Technology).filter(mdl.Technology.local == local).all() 
+    return [sch.Technology.model_validate(tech) for tech in db_tech]
+
 
 @app.get("/products")
-def get_product( session: Session = Depends(get_db)):
-    db_products = session.query(mdl.Product).all()
+def get_product( local: str, session: Session = Depends(get_db)):
+    db_products = session.query(mdl.Product).filter(mdl.Product.local == local).all()
     return [sch.ProductDetails.model_validate(product) for product in db_products]
 
 
@@ -72,8 +81,8 @@ def add_category(category: sch.Category, session: Session = Depends(get_db)) -> 
     return "Category was added"
 
 @app.get("/categories")
-def get_categories( session: Session = Depends(get_db)):
-    db_products = session.query(mdl.Category).all()
+def get_categories(local: str, session: Session = Depends(get_db)):
+    db_products = session.query(mdl.Category).filter(mdl.Category.local == local).all()
     return [sch.Category.model_validate(product) for product in db_products]
 
 
@@ -83,8 +92,8 @@ def add_type(type: sch.Type, session: Session = Depends(get_db)) -> str:
     return "Type was added"
 
 @app.get("/types")
-def get_type( session: Session = Depends(get_db)):
-    db_products = session.query(mdl.Type).filter(mdl.Type.name != "Hidroisolation").all()
+def get_type(local: str, session: Session = Depends(get_db)):
+    db_products = session.query(mdl.Type).filter(mdl.Type.local == local).filter(mdl.Type.name != "Hidroisolation").all()
     return [sch.Type.model_validate(product) for product in db_products]
 
 @app.get("/product/{product_id}/images")
@@ -95,9 +104,9 @@ def get_images(product_id: int, session: Session = Depends(get_db)):
 
     
 @app.get("/products/isolation/categories")
-def get_hidro_isolation(session: Session = Depends(get_db)):
+def get_hidro_isolation(local: str, session: Session = Depends(get_db)):
     try:
-        types = session.query(mdl.Type).filter(mdl.Type.name == "Hidroisolation").first()
+        types = session.query(mdl.Type).filter(mdl.Type.local == local).filter(mdl.Type.name == "Hidroisolation").first()
         
         if not types:
             raise HTTPException(status_code=404, detail="Type 'HidroIsolation' not found")
@@ -147,9 +156,9 @@ def get_categories_by_type_id(type_id: int, session: Session = Depends(get_db)):
 
 
 @app.get("/types-with-categories")
-def get_types_with_categories(session: Session = Depends(get_db)):
+def get_types_with_categories(local: str, session: Session = Depends(get_db)):
     try:
-        types = session.query(mdl.Type).filter(mdl.Type.name != "Hidroisolation").all()
+        types = session.query(mdl.Type).filter(mdl.Type.local == local).filter(mdl.Type.name != "Hidroisolation").all()
         
         if not types:
             raise HTTPException(status_code=404, detail="No types found")
@@ -201,3 +210,19 @@ def get_product_details(product_id: int, session: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Product not found")
     
     return product
+
+
+@app.post("/upload")
+async def upload_files(file: UploadFile = File(...)):
+    file_path = f"images/{file.filename}"
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    return {"file" : file_path}
+
+@app.get("/upload/{file_name}")
+async def get_files_by_name(file_name:str):
+    path = os.path.join("images/", file_name)
+    if not os.path.isfile(path):
+        raise HTTPException(status_code=404, detail="File not found")
+    
+    return FileResponse(path)
