@@ -42,6 +42,7 @@ class Category(Base):
     id : Mapped[_id]
     name: Mapped[str]
     description: Mapped[str]
+    image: Mapped[str]
     
     type_id: Mapped[int] = mapped_column(sqlalchemy.ForeignKey('types.id'))
     local : Mapped[str]

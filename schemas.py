@@ -24,11 +24,11 @@ class CreateProduct(Base):
     id: int
 
 class Type(Base):
-    pass
+    id:int
 
 class Category(Base):
-    id:int
-    type: Type
+    type_id: int
+    image: str
 
 
 

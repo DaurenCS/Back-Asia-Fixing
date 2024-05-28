@@ -93,7 +93,7 @@ def add_type(type: sch.Type, session: Session = Depends(get_db)) -> str:
 
 @app.get("/types")
 def get_type(local: str, session: Session = Depends(get_db)):
-    db_products = session.query(mdl.Type).filter(mdl.Type.local == local).filter(mdl.Type.name != "Hidroisolation").all()
+    db_products = session.query(mdl.Type).filter(mdl.Type.local == local).all()
     return [sch.Type.model_validate(product) for product in db_products]
 
 @app.get("/product/{product_id}/images")
@@ -106,8 +106,11 @@ def get_images(product_id: int, session: Session = Depends(get_db)):
 @app.get("/products/isolation/categories")
 def get_hidro_isolation(local: str, session: Session = Depends(get_db)):
     try:
-        types = session.query(mdl.Type).filter(mdl.Type.local == local).filter(mdl.Type.name == "Hidroisolation").first()
-        
+        if local == "en":
+            types = session.query(mdl.Type).filter(mdl.Type.name == "Hidroisolation").first()
+        else:
+            types = session.query(mdl.Type).filter(mdl.Type.name == "Гидроизоляция").first()
+
         if not types:
             raise HTTPException(status_code=404, detail="Type 'HidroIsolation' not found")
 
