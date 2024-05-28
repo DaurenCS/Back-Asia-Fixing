@@ -20,13 +20,20 @@ class CreateProduct(Base):
     price: float
     category_id: int
 
-class CreateProduct(Base):
-    id: int
+
 
 class Type(Base):
     id:int
 
+class CreateType(Base):
+    pass
+
 class Category(Base):
+    id: int
+    type_id: int
+    image: str
+
+class CreateCategory(Base):
     type_id: int
     image: str
 
@@ -48,7 +55,15 @@ class ProductDetails(Base):
     category: Category
     images: ProductImage
 
+class CreateTechnology(Base):
+    name:str
+    description:str
+    image:str
+    text:str
+    local:str
+
 class Technology(Base):
+    id: int
     name:str
     description:str
     image:str

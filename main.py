@@ -49,7 +49,7 @@ def url_creater(product: sch.Product):
 
 
 @app.post("/products/add")
-def add_product(product: sch.Product, session: Session = Depends(get_db)) -> str:
+def add_product(product: sch.CreateProduct, session: Session = Depends(get_db)) -> str:
     db_product  = mdl.Product(**product.model_dump())
     session.add(db_product)
     for url in url_creater(product):
@@ -58,7 +58,7 @@ def add_product(product: sch.Product, session: Session = Depends(get_db)) -> str
     return f"Products was added;"
 
 @app.post("/technologies/add")
-def add_technologies(product: sch.Technology, session: Session = Depends(get_db)) -> str:
+def add_technologies(product: sch.CreateTechnology, session: Session = Depends(get_db)) -> str:
     db_product  = mdl.Technology(**product.model_dump())
     session.add(db_product) 
     return f"Technology was added;"
@@ -76,7 +76,7 @@ def get_product( local: str, session: Session = Depends(get_db)):
 
 
 @app.post("/categories/add")
-def add_category(category: sch.Category, session: Session = Depends(get_db)) -> str:
+def add_category(category: sch.CreateCategory, session: Session = Depends(get_db)) -> str:
     session.add(mdl.Category(**category.model_dump()))
     return "Category was added"
 
@@ -87,7 +87,7 @@ def get_categories(local: str, session: Session = Depends(get_db)):
 
 
 @app.post("/types/add")
-def add_type(type: sch.Type, session: Session = Depends(get_db)) -> str:
+def add_type(type: sch.CreateType, session: Session = Depends(get_db)) -> str:
     session.add(mdl.Type(**type.model_dump()))
     return "Type was added"
 
