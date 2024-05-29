@@ -48,14 +48,78 @@ def url_creater(product: sch.Product):
     return urls
 
 
-@app.post("/products/add")
+@app.post("/installation/products/add")
+def add_product(product: sch.CreateProduct, session: Session = Depends(get_db)) -> str:
+    db_product = mdl.Product(**product.model_dump())
+    session.add(db_product)
+    session.flush()  # Этот метод гарантирует, что запись в базу данных будет выполнена, и вы получите ID нового продукта
+
+    urls = url_creater(product)  # Получаем список URL-адресов изображений
+    for url in urls:
+        images = mdl.ProductImage(product_id=db_product.id, name=url)  # Устанавливаем product_id
+        session.add(images)
+
+    session.commit()  # Фиксируем транзакцию
+
+    return f"Products was added;"
+
+
+@app.post("/isolation/products/add")
 def add_product(product: sch.CreateProduct, session: Session = Depends(get_db)) -> str:
     db_product  = mdl.Product(**product.model_dump())
     session.add(db_product)
-    for url in url_creater(product):
-        images = mdl.ProductImage(product_id = product.id, name = url)
-        session.add(images)
+
     return f"Products was added;"
+
+@app.get("/products")
+def get_product( local: str, session: Session = Depends(get_db)):
+    db_products = session.query(mdl.Product).filter(mdl.Product.local == local).all()
+    return [sch.Product.model_validate(product) for product in db_products]
+
+@app.get("/installation/products")
+def get_product( local: str, session: Session = Depends(get_db)):        
+    db_products = session.query(mdl.Product).filter(mdl.Product.local == local).filter(mdl.Product.price != 0).all()
+    return [sch.ProductDetails.model_validate(product) for product in db_products]
+
+
+@app.get("/products/category/{category_id}")
+def get_products_by_category(category_id: int, session: Session = Depends(get_db)):
+    products = session.query(mdl.Product).filter(mdl.Product.category_id == category_id).all()
+    return [sch.Product.model_validate(items) for items in products]
+
+@app.get("/products/type/{type_id}")
+def get_products_by_type_id(type_id: int, session: Session = Depends(get_db)):
+    db_query = (
+        select(mdl.Product)
+        .join(mdl.Category)
+        .join(mdl.Type)
+        .where(mdl.Type.id == type_id)
+    )
+    products = session.execute(db_query).scalars().all()
+    if not products:
+        raise HTTPException(status_code=404, detail="No products found for the given type ID")
+    
+    return [sch.ProductDetails.model_validate(items) for items in products]
+
+@app.get("/products/{product_id}", response_model=sch.ProductDetails)
+def get_product_details(product_id: int, session: Session = Depends(get_db)):
+    # Query to get product details with category name, type name, and product images
+    product = (
+        session.query(mdl.Product)
+        .options(
+            selectinload(mdl.Product.category).selectinload(mdl.Category.type),
+            selectinload(mdl.Product.images)
+        )
+        .filter(mdl.Product.id == product_id)
+        .first()
+    )
+    
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    
+    return product
+
+
 
 @app.post("/technologies/add")
 def add_technologies(product: sch.CreateTechnology, session: Session = Depends(get_db)) -> str:
@@ -69,10 +133,6 @@ def get_technologies(local: str, session: Session = Depends(get_db)):
     return [sch.Technology.model_validate(tech) for tech in db_tech]
 
 
-@app.get("/products")
-def get_product( local: str, session: Session = Depends(get_db)):
-    db_products = session.query(mdl.Product).filter(mdl.Product.local == local).all()
-    return [sch.ProductDetails.model_validate(product) for product in db_products]
 
 
 @app.post("/categories/add")
@@ -84,24 +144,6 @@ def add_category(category: sch.CreateCategory, session: Session = Depends(get_db
 def get_categories(local: str, session: Session = Depends(get_db)):
     db_products = session.query(mdl.Category).filter(mdl.Category.local == local).all()
     return [sch.Category.model_validate(product) for product in db_products]
-
-
-@app.post("/types/add")
-def add_type(type: sch.CreateType, session: Session = Depends(get_db)) -> str:
-    session.add(mdl.Type(**type.model_dump()))
-    return "Type was added"
-
-@app.get("/types")
-def get_type(local: str, session: Session = Depends(get_db)):
-    db_products = session.query(mdl.Type).filter(mdl.Type.local == local).all()
-    return [sch.Type.model_validate(product) for product in db_products]
-
-@app.get("/product/{product_id}/images")
-def get_images(product_id: int, session: Session = Depends(get_db)):
-    product_images = session.query(mdl.ProductImage).filter(mdl.ProductImage.product_id == product_id).all()
-    return [sch.ProductImage.model_validate(items) for items in product_images]
-
-
     
 @app.get("/products/isolation/categories")
 def get_hidro_isolation(local: str, session: Session = Depends(get_db)):
@@ -131,12 +173,6 @@ def get_hidro_isolation(local: str, session: Session = Depends(get_db)):
             detail="Internal server error"
         )
 
-
-@app.get("/products/category/{category_id}")
-def get_products_by_category(category_id: int, session: Session = Depends(get_db)):
-    products = session.query(mdl.Product).filter(mdl.Product.category_id == category_id).all()
-    return [sch.ProductDetails.model_validate(items) for items in products]
-
 @app.get("/categories/{type_id}")
 def get_categories_by_type_id(type_id: int, session: Session = Depends(get_db)):
     try:
@@ -158,10 +194,21 @@ def get_categories_by_type_id(type_id: int, session: Session = Depends(get_db)):
         )
 
 
+
+@app.post("/types/add")
+def add_type(type: sch.CreateType, session: Session = Depends(get_db)) -> str:
+    session.add(mdl.Type(**type.model_dump()))
+    return "Type was added"
+
+@app.get("/types")
+def get_type(local: str, session: Session = Depends(get_db)):
+    db_products = session.query(mdl.Type).filter(mdl.Type.local == local).all()
+    return [sch.Type.model_validate(product) for product in db_products]
+
 @app.get("/types-with-categories")
 def get_types_with_categories(local: str, session: Session = Depends(get_db)):
     try:
-        types = session.query(mdl.Type).filter(mdl.Type.local == local).filter(mdl.Type.name != "Hidroisolation").all()
+        types = session.query(mdl.Type).filter(mdl.Type.local == local).filter(mdl.Type.name != "Гидроизоляция").filter(mdl.Type.name != "Hidroisolation").all()
         
         if not types:
             raise HTTPException(status_code=404, detail="No types found")
@@ -181,38 +228,12 @@ def get_types_with_categories(local: str, session: Session = Depends(get_db)):
             detail="Internal server error"
         )
 
-@app.get("/products/type/{type_id}")
-def get_products_by_type_id(type_id: int, session: Session = Depends(get_db)):
-    db_query = (
-        select(mdl.Product)
-        .join(mdl.Category)
-        .join(mdl.Type)
-        .where(mdl.Type.id == type_id)
-    )
-    products = session.execute(db_query).scalars().all()
-    if not products:
-        raise HTTPException(status_code=404, detail="No products found for the given type ID")
-    
-    return [sch.ProductDetails.model_validate(items) for items in products]
 
 
-@app.get("/products/{product_id}", response_model=sch.ProductDetails)
-def get_product_details(product_id: int, session: Session = Depends(get_db)):
-    # Query to get product details with category name, type name, and product images
-    product = (
-        session.query(mdl.Product)
-        .options(
-            selectinload(mdl.Product.category).selectinload(mdl.Category.type),
-            selectinload(mdl.Product.images)
-        )
-        .filter(mdl.Product.id == product_id)
-        .first()
-    )
-    
-    if not product:
-        raise HTTPException(status_code=404, detail="Product not found")
-    
-    return product
+# @app.get("/product/{product_id}/images")
+# def get_images(product_id: int, session: Session = Depends(get_db)):
+#     product_images = session.query(mdl.ProductImage).filter(mdl.ProductImage.product_id == product_id).all()
+#     return [sch.ProductImage.model_validate(items) for items in product_images]
 
 
 @app.post("/upload")
@@ -229,3 +250,4 @@ async def get_files_by_name(file_name:str):
         raise HTTPException(status_code=404, detail="File not found")
     
     return FileResponse(path)
+
