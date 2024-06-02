@@ -241,7 +241,43 @@ async def upload_files(file: UploadFile = File(...)):
     file_path = f"images/{file.filename}"
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
-    return {"file" : file_path}
+
+    path = os.path.join("images/", file.filename)
+    
+    return {"fr": path }
+
+@app.post("/certificate/upload")
+async def upload_certificate(name: str,decription: str, file: UploadFile = File(...) ,session: Session = Depends(get_db)):
+    file_path = f"files/{file.filename}"
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    
+    db_path = f"http://127.0.0.1:8000/{file_path}"
+    
+    db_certificate = mdl.Certificate(name = name, description = decription, file_path = db_path)
+
+    session.add(db_certificate)
+    
+
+# @app.get("/certificates")
+# def get_certificates(session: Session = Depends(get_db)):
+#     db_tech = session.query(mdl.Certificate).all() 
+#     return [sch.Certificate.model_validate(tech) for tech in db_tech]
+
+
+from fastapi.staticfiles import StaticFiles    
+
+app.mount("/files", StaticFiles(directory="files"), name="files")
+
+@app.get("/isolation/certificates", response_model=list[sch.Certificate])
+async def get_certificates(db: Session = Depends(get_db)):
+    certificates = db.query(mdl.Certificate).filter(mdl.Certificate.description == "isolation").all()
+    return certificates
+
+@app.get("/installation/certificates", response_model=list[sch.Certificate])
+async def get_certificates(db: Session = Depends(get_db)):
+    certificates = db.query(mdl.Certificate).filter(mdl.Certificate.description == "installation").all()
+    return certificates
 
 @app.get("/upload/{file_name}")
 async def get_files_by_name(file_name:str):

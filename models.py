@@ -75,6 +75,12 @@ class Technology(Base):
     text: Mapped[str]
     local: Mapped[str] 
 
+class Certificate(Base):
+    __tablename__ = "certificates"
+    id: Mapped[_id]
+    name: Mapped[str]
+    description: Mapped[str]
+    file_path: Mapped[str]
 
 
 

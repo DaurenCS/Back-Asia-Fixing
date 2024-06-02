@@ -8,6 +8,21 @@ class Base(BaseModel):
     class Config:
         from_attributes = True
 
+class Certificate(BaseModel):
+    name: str
+    description: str
+    file_path: str
+
+    class Config:
+        from_attributes = True
+
+class CreateCertificate(BaseModel):
+    name: str
+    description: str
+
+    class Config:
+        from_attributes = True
+
     
 class Product(Base):
     id:int
